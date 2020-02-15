@@ -1,5 +1,6 @@
 mod opcode;
 mod instruction;
+mod parser;
 
 use opcode::Opcode;
 use instruction::Instruction;
