@@ -5,3 +5,4 @@ authors = ["suhdonghwi <hwidongsuh@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+nom = "5.1.0"
