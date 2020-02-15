@@ -1,4 +1,4 @@
-pub enum Instruction {
+pub enum OPcode {
   Push,
   Pop,
   Load,
