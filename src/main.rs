@@ -10,5 +10,5 @@ fn main() {
     opcode: Opcode::Push(10),
   };
 
-  println!("Hello, world");
+  println!("{:#?}", inst);
 }

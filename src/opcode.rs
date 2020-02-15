@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Opcode {
   Push (u32),
   Pop,
