@@ -1,3 +1,4 @@
+mod constant;
 mod instruction;
 mod opcode;
 mod parser;
