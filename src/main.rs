@@ -4,8 +4,6 @@ mod opcode;
 mod parser;
 mod program;
 
-use instruction::Instruction;
-use opcode::Opcode;
 use parser::program;
 
 fn main() {
