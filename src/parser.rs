@@ -16,6 +16,12 @@ fn char(input: &[u8]) -> IResult<&[u8], Option<char>> {
   Ok((input, char::from_u32(result)))
 }
 
+fn boolean(input: &[u8]) -> IResult<&[u8], bool> {
+  let (input, result) = number::complete::be_u8(input)?;
+  Ok((input, result == 1))
+}
+
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -42,5 +48,11 @@ mod tests {
         assert_eq!(char(b"\x00\x00\xac\x00"), Ok((&b""[..], Some('가'))));
         assert_eq!(char(b"\x00\x01\xf6\x3b"), Ok((&b""[..], Some('😻'))));
         assert_eq!(char(b"\x00\x02\x10\x7b"), Ok((&b""[..], Some('𡁻'))));
+    }
+
+    #[test]
+    fn parse_boolean() {
+        assert_eq!(boolean(b"\x00"), Ok((&b""[..], false)));
+        assert_eq!(boolean(b"\x01"), Ok((&b""[..], true)));
     }
 }
