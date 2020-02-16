@@ -1,8 +1,9 @@
 extern crate nom;
 
-use nom::{character, combinator, multi, number::complete::*, IResult};
+use nom::{combinator, multi, number::complete::*, IResult};
 use std::char;
 
+use crate::constant::{Constant, FuncObject};
 use crate::instruction::Instruction;
 use crate::opcode::Opcode;
 
@@ -14,14 +15,22 @@ fn real(input: &[u8]) -> IResult<&[u8], f64> {
     be_f64(input)
 }
 
-fn char(input: &[u8]) -> IResult<&[u8], Option<char>> {
+fn character(input: &[u8]) -> IResult<&[u8], char> {
     let (input, result) = be_u32(input)?;
-    Ok((input, char::from_u32(result)))
+    Ok((input, char::from_u32(result).unwrap()))
 }
 
 fn boolean(input: &[u8]) -> IResult<&[u8], bool> {
     let (input, result) = be_u8(input)?;
     Ok((input, result == 1))
+}
+
+fn list<A, F>(input: &[u8], parser: F) -> IResult<&[u8], Vec<A>>
+where
+    F: Fn(&[u8]) -> IResult<&[u8], A>,
+{
+    let (input, count) = be_u64(input)?;
+    multi::count(parser, count as usize)(input)
 }
 
 fn char_utf8(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
@@ -36,10 +45,11 @@ fn char_utf8(input: &[u8]) -> IResult<&[u8], Vec<u8>> {
 }
 
 fn string(input: &[u8]) -> IResult<&[u8], String> {
-    let (input, count) = integer(input)?;
-    let (input, result) = multi::count(char_utf8, count as usize)(input)?;
-    let flatten = result.into_iter().flatten().collect();
-    Ok((input, String::from_utf8(flatten).unwrap()))
+    // let (input, count) = integer(input)?;
+    // let (input, result) = multi::count(char_utf8, count as usize)(input)?;
+    let (input, result) = list(input, char_utf8)?;
+    let flattened = result.into_iter().flatten().collect();
+    Ok((input, String::from_utf8(flattened).unwrap()))
 }
 
 fn apply<A, B, C>(value: (A, B), f: fn(B) -> C) -> (A, C) {
@@ -79,6 +89,43 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
         },
     ))
 }
+
+// fn code_object(input: &[u8]) -> IResult<&[u8], FuncObject> {}
+
+// fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
+//     let (input, constant_index) = be_u8(input)?;
+//     let (input, constant) = match constant_index {
+//         0 => (input, Constant::None),
+//         1 => {
+//             let (input, value) = integer(input)?;
+//             (input, Constant::Integer(value))
+//         }
+//         2 => {
+//             let (input, value) = real(input)?;
+//             (input, Constant::Real(value))
+//         }
+//         3 => {
+//             let (input, value) = character(input)?;
+//             (input, Constant::Char(value))
+//         }
+//         4 => {
+//             let (input, value) = boolean(input)?;
+//             (input, Constant::Boolean(value))
+//         }
+//         5 => {
+//             let (input, arity) = be_u8(input)?;
+//             let (input, value) = code_object(input)?;
+//             (
+//                 input,
+//                 Constant::Function {
+//                     arity,
+//                     func_object: value,
+//                 },
+//             )
+//         }
+//     };
+//     Ok((input, constant))
+// }
 
 #[cfg(test)]
 mod tests {
@@ -123,10 +170,10 @@ mod tests {
 
     #[test]
     fn parse_char() {
-        assert_eq!(char(b"\x00\x00\x00\x61"), Ok((&b""[..], Some('a'))));
-        assert_eq!(char(b"\x00\x00\xac\x00"), Ok((&b""[..], Some('가'))));
-        assert_eq!(char(b"\x00\x01\xf6\x3b"), Ok((&b""[..], Some('😻'))));
-        assert_eq!(char(b"\x00\x02\x10\x7b"), Ok((&b""[..], Some('𡁻'))));
+        assert_eq!(character(b"\x00\x00\x00\x61"), Ok((&b""[..], 'a')));
+        assert_eq!(character(b"\x00\x00\xac\x00"), Ok((&b""[..], '가')));
+        assert_eq!(character(b"\x00\x01\xf6\x3b"), Ok((&b""[..], '😻')));
+        assert_eq!(character(b"\x00\x02\x10\x7b"), Ok((&b""[..], '𡁻')));
     }
 
     #[test]

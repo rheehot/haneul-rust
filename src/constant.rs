@@ -1,6 +1,7 @@
 use crate::instruction::Instruction;
 
 pub enum Constant {
+    None,
     Integer(i64),
     Real(f64),
     Char(char),
