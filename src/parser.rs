@@ -6,6 +6,7 @@ use std::char;
 use crate::constant::{Constant, FuncObject};
 use crate::instruction::Instruction;
 use crate::opcode::Opcode;
+use crate::program::Program;
 
 fn integer(input: &[u8]) -> IResult<&[u8], i64> {
     be_i64(input)
@@ -133,9 +134,15 @@ fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
     Ok((input, constant))
 }
 
+pub fn program(input: &[u8]) -> IResult<&[u8], Program> {
+    let (input, const_table) = list(input, constant)?;
+    let (input, code) = list(input, instruction)?;
+
+    Ok((input, Program { const_table, code }))
+}
+
 #[cfg(test)]
 mod tests {
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
     #[test]
