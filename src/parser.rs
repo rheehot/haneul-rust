@@ -90,42 +90,48 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
     ))
 }
 
-// fn code_object(input: &[u8]) -> IResult<&[u8], FuncObject> {}
+fn code_object(input: &[u8]) -> IResult<&[u8], FuncObject> {
+    let (input, const_table) = list(input, constant)?;
+    let (input, code) = list(input, instruction)?;
 
-// fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
-//     let (input, constant_index) = be_u8(input)?;
-//     let (input, constant) = match constant_index {
-//         0 => (input, Constant::None),
-//         1 => {
-//             let (input, value) = integer(input)?;
-//             (input, Constant::Integer(value))
-//         }
-//         2 => {
-//             let (input, value) = real(input)?;
-//             (input, Constant::Real(value))
-//         }
-//         3 => {
-//             let (input, value) = character(input)?;
-//             (input, Constant::Char(value))
-//         }
-//         4 => {
-//             let (input, value) = boolean(input)?;
-//             (input, Constant::Boolean(value))
-//         }
-//         5 => {
-//             let (input, arity) = be_u8(input)?;
-//             let (input, value) = code_object(input)?;
-//             (
-//                 input,
-//                 Constant::Function {
-//                     arity,
-//                     func_object: value,
-//                 },
-//             )
-//         }
-//     };
-//     Ok((input, constant))
-// }
+    Ok((input, FuncObject::CodeObject { const_table, code }))
+}
+
+fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
+    let (input, constant_index) = be_u8(input)?;
+    let (input, constant) = match constant_index {
+        0 => (input, Constant::None),
+        1 => {
+            let (input, value) = integer(input)?;
+            (input, Constant::Integer(value))
+        }
+        2 => {
+            let (input, value) = real(input)?;
+            (input, Constant::Real(value))
+        }
+        3 => {
+            let (input, value) = character(input)?;
+            (input, Constant::Char(value))
+        }
+        4 => {
+            let (input, value) = boolean(input)?;
+            (input, Constant::Boolean(value))
+        }
+        5 => {
+            let (input, arity) = be_u8(input)?;
+            let (input, value) = code_object(input)?;
+            (
+                input,
+                Constant::Function {
+                    arity,
+                    func_object: value,
+                },
+            )
+        }
+        _ => panic!("invalid constant type value"),
+    };
+    Ok((input, constant))
+}
 
 #[cfg(test)]
 mod tests {
@@ -222,5 +228,52 @@ mod tests {
                 }
             ))
         );
+    }
+
+    #[test]
+    fn parse_constant() {
+        assert_eq!(constant(b"\x00"), Ok((&b""[..], Constant::None)));
+        assert_eq!(
+            constant(b"\x01\x00\x00\x00\x00\x00\x00\x00\x7b"),
+            Ok((&b""[..], Constant::Integer(123)))
+        );
+        assert_eq!(
+            constant(b"\x02\x40\x25\x00\x00\x00\x00\x00\x00"),
+            Ok((&b""[..], Constant::Real(10.5)))
+        );
+        assert_eq!(
+            constant(b"\x03\x00\x00\xc5\x48"),
+            Ok((&b""[..], Constant::Char('안')))
+        );
+        assert_eq!(
+            constant(b"\x04\x01"),
+            Ok((&b""[..], Constant::Boolean(true)))
+        );
+
+        let code_object = FuncObject::CodeObject {
+            code: vec![
+                Instruction {
+                    line_number: 1,
+                    opcode: Opcode::Load(0),
+                },
+                Instruction {
+                    line_number: 1,
+                    opcode: Opcode::Push(0),
+                },
+                Instruction {
+                    line_number: 1,
+                    opcode: Opcode::Add,
+                },
+            ],
+            const_table: vec![Constant::Integer(1)],
+        };
+
+        assert_eq!(
+            constant(b"\x05\x01\x00\x00\x00\x00\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00\x01\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x08"),
+            Ok((&b""[..], Constant::Function {
+              arity: 1,
+              func_object: code_object
+            })
+        ));
     }
 }
