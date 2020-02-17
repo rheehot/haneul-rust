@@ -1,5 +1,6 @@
 mod constant;
 mod instruction;
+mod machine;
 mod opcode;
 mod parser;
 mod program;

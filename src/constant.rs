@@ -1,7 +1,7 @@
 use crate::instruction::Instruction;
 use std::fmt;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Constant {
     None,
     Integer(i64),
@@ -11,13 +11,14 @@ pub enum Constant {
     Function { arity: u8, func_object: FuncObject },
 }
 
+#[derive(Clone)]
 pub enum FuncObject {
     CodeObject {
         code: Vec<Instruction>,
         const_table: Vec<Constant>,
     },
     NativeFunc {
-        function: Box<Fn(Vec<Constant>) -> Constant>,
+        function: Box<fn(Vec<Constant>) -> Constant>,
     },
 }
 
