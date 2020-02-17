@@ -2,10 +2,12 @@ extern crate nom;
 
 use nom::{combinator, multi, number::complete::*, IResult};
 use std::char;
+use std::cmp::Ordering;
 
-use crate::constant::{Constant, FuncObject};
+use crate::constant::Constant;
+use crate::funcobject::FuncObject;
 use crate::instruction::Instruction;
-use crate::opcode::Opcode;
+use crate::opcode::{BinaryOp, Opcode, UnaryOp};
 use crate::program::Program;
 
 fn integer(input: &[u8]) -> IResult<&[u8], i64> {
@@ -70,15 +72,15 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
         5 => apply(be_u32(input)?, Opcode::Call),
         6 => apply(be_u32(input)?, Opcode::Jmp),
         7 => apply(be_u32(input)?, Opcode::PopJmpIfFalse),
-        8 => (input, Opcode::Add),
-        9 => (input, Opcode::Subtract),
-        10 => (input, Opcode::Multiply),
-        11 => (input, Opcode::Divide),
-        12 => (input, Opcode::Mod),
-        13 => (input, Opcode::Equal),
-        14 => (input, Opcode::LessThan),
-        15 => (input, Opcode::GreaterThan),
-        16 => (input, Opcode::Negate),
+        8 => (input, Opcode::BinaryOp(BinaryOp::Add)),
+        9 => (input, Opcode::BinaryOp(BinaryOp::Subtract)),
+        10 => (input, Opcode::BinaryOp(BinaryOp::Multiply)),
+        11 => (input, Opcode::BinaryOp(BinaryOp::Divide)),
+        12 => (input, Opcode::BinaryOp(BinaryOp::Mod)),
+        13 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Equal))),
+        14 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Less))),
+        15 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Greater))),
+        16 => (input, Opcode::UnaryOp(UnaryOp::Negate)),
         _ => panic!("invalid opcode type value"),
     };
 
@@ -269,7 +271,7 @@ mod tests {
                 },
                 Instruction {
                     line_number: 1,
-                    opcode: Opcode::Add,
+                    opcode: Opcode::BinaryOp(BinaryOp::Add),
                 },
             ],
             const_table: vec![Constant::Integer(1)],

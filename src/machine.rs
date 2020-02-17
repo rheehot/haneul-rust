@@ -1,22 +1,24 @@
 use std::collections::HashMap;
 
-use crate::constant::{Constant, FuncObject};
+use crate::constant::Constant;
+use crate::funcobject::FuncObject;
 use crate::instruction::Instruction;
-use crate::opcode::Opcode;
+use crate::opcode::{BinaryOp, Opcode, UnaryOp};
 
 pub struct StackFrame {
-    code: Vec<Instruction>,
-    const_table: Vec<Constant>,
-    slot_start: usize,
+    pub code: Vec<Instruction>,
+    pub const_table: Vec<Constant>,
+    pub slot_start: usize,
 }
 
+#[derive(Default)]
 pub struct Machine {
     operand_stack: Vec<Constant>,
     global_vars: HashMap<String, Constant>,
 }
 
 impl Machine {
-    fn run(&mut self, frame: &StackFrame) {
+    pub fn run(&mut self, frame: &StackFrame) {
         let mut ip = 0;
         let code_length = frame.code.len();
 
@@ -90,16 +92,14 @@ impl Machine {
                         panic!("이 타입은 호출 가능한 타입이 아닙니다.")
                     }
                 }
-
                 Opcode::Jmp(v) => {
                     ip = *v as usize;
                     continue;
                 }
-
                 Opcode::PopJmpIfFalse(v) => {
                     match self.operand_stack.pop().unwrap() {
                         Constant::Boolean(value) => {
-                            if value {
+                            if !value {
                                 ip = *v as usize;
                                 continue;
                             }
@@ -109,7 +109,37 @@ impl Machine {
                         }
                     };
                 }
-                _ => unimplemented!(),
+                Opcode::UnaryOp(op) => {
+                    let value = self.operand_stack.pop().unwrap();
+                    let result = match op {
+                        UnaryOp::Negate => -&value,
+                    };
+
+                    match result {
+                        Some(result_value) => self.operand_stack.push(result_value),
+                        None => panic!("이 타입에는 연산을 적용할 수 없습니다."),
+                    }
+                }
+                Opcode::BinaryOp(op) => {
+                    let rhs = &self.operand_stack.pop().unwrap();
+                    let lhs = &self.operand_stack.pop().unwrap();
+
+                    let result = match op {
+                        BinaryOp::Add => lhs + rhs,
+                        BinaryOp::Subtract => lhs - rhs,
+                        BinaryOp::Multiply => lhs * rhs,
+                        BinaryOp::Divide => lhs / rhs,
+                        BinaryOp::Mod => lhs % rhs,
+                        BinaryOp::Cmp(ord) => Some(Constant::Boolean(
+                            PartialOrd::partial_cmp(&lhs, &rhs) == Some(*ord),
+                        )),
+                    };
+
+                    match result {
+                        Some(result_value) => self.operand_stack.push(result_value),
+                        None => panic!("이 타입에는 연산을 적용할 수 없습니다."),
+                    }
+                }
             }
 
             ip = ip + 1;

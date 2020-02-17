@@ -1,3 +1,20 @@
+use std::cmp::Ordering;
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum BinaryOp {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Mod,
+    Cmp(Ordering),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum UnaryOp {
+    Negate,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Opcode {
     Push(u32),
@@ -8,13 +25,6 @@ pub enum Opcode {
     Call(u32),
     Jmp(u32),
     PopJmpIfFalse(u32),
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Mod,
-    Equal,
-    LessThan,
-    GreaterThan,
-    Negate,
+    BinaryOp(BinaryOp),
+    UnaryOp(UnaryOp),
 }

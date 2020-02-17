@@ -1,5 +1,7 @@
-use crate::instruction::Instruction;
-use std::fmt;
+use std::cmp::Ordering;
+use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+
+use crate::funcobject::FuncObject;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Constant {
@@ -11,44 +13,92 @@ pub enum Constant {
     Function { arity: u8, func_object: FuncObject },
 }
 
-#[derive(Clone)]
-pub enum FuncObject {
-    CodeObject {
-        code: Vec<Instruction>,
-        const_table: Vec<Constant>,
-    },
-    NativeFunc {
-        function: Box<fn(Vec<Constant>) -> Constant>,
-    },
+fn normalize_constants(i1: &Constant, i2: &Constant) -> (Constant, Constant) {
+    match (i1, i2) {
+        (Constant::Integer(v1), v2 @ Constant::Real(_)) => (Constant::Real(*v1 as f64), v2.clone()),
+        (v1 @ Constant::Real(_), Constant::Integer(v2)) => (v1.clone(), Constant::Real(*v2 as f64)),
+        (v1, v2) => (v1.clone(), v2.clone()),
+    }
 }
 
-impl fmt::Debug for FuncObject {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            FuncObject::CodeObject { code, const_table } => f
-                .debug_struct("CodeObject")
-                .field("code", &code)
-                .field("const_table", &const_table)
-                .finish(),
-            FuncObject::NativeFunc { .. } => f.debug_struct("NativeFunc").finish(),
+impl Add for &Constant {
+    type Output = Option<Constant>;
+
+    fn add(self, other: &Constant) -> Option<Constant> {
+        match normalize_constants(self, other) {
+            (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 + v2)),
+            (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 + v2)),
+            _ => None,
         }
     }
 }
 
-impl PartialEq for FuncObject {
-    fn eq(&self, other: &FuncObject) -> bool {
-        match (self, other) {
-            (
-                FuncObject::CodeObject {
-                    code: code1,
-                    const_table: const_table1,
-                },
-                FuncObject::CodeObject {
-                    code: code2,
-                    const_table: const_table2,
-                },
-            ) => (code1 == code2) && (const_table1 == const_table2),
-            _ => false,
+impl Sub for &Constant {
+    type Output = Option<Constant>;
+
+    fn sub(self, other: &Constant) -> Option<Constant> {
+        match normalize_constants(self, other) {
+            (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 - v2)),
+            (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 - v2)),
+            _ => None,
+        }
+    }
+}
+
+impl Mul for &Constant {
+    type Output = Option<Constant>;
+
+    fn mul(self, other: &Constant) -> Option<Constant> {
+        match normalize_constants(self, other) {
+            (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 * v2)),
+            (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 * v2)),
+            _ => None,
+        }
+    }
+}
+
+impl Div for &Constant {
+    type Output = Option<Constant>;
+
+    fn div(self, other: &Constant) -> Option<Constant> {
+        match normalize_constants(self, other) {
+            (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 / v2)),
+            (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 / v2)),
+            _ => None,
+        }
+    }
+}
+
+impl Rem for &Constant {
+    type Output = Option<Constant>;
+
+    fn rem(self, other: &Constant) -> Option<Constant> {
+        match normalize_constants(self, other) {
+            (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 % v2)),
+            _ => None,
+        }
+    }
+}
+
+impl Neg for &Constant {
+    type Output = Option<Constant>;
+
+    fn neg(self) -> Option<Constant> {
+        match self {
+            Constant::Integer(v) => Some(Constant::Integer(-v)),
+            Constant::Real(v) => Some(Constant::Real(-v)),
+            _ => None,
+        }
+    }
+}
+
+impl PartialOrd for Constant {
+    fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
+        match normalize_constants(self, other) {
+            (Constant::Integer(v1), Constant::Integer(v2)) => PartialOrd::partial_cmp(&v1, &v2),
+            (Constant::Real(v1), Constant::Real(v2)) => PartialOrd::partial_cmp(&v1, &v2),
+            (Constant::Char(v1), Constant::Char(v2)) => PartialOrd::partial_cmp(&v1, &v2),
+            _ => None,
         }
     }
 }
