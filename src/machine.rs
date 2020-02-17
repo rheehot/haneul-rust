@@ -104,9 +104,7 @@ impl Machine {
                                 continue;
                             }
                         }
-                        _ => {
-                            panic!("여기에는 참 또는 거짓 타입을 필요로 합니다.")
-                        }
+                        _ => panic!("여기에는 참 또는 거짓 타입을 필요로 합니다."),
                     };
                 }
                 Opcode::UnaryOp(op) => {
@@ -142,7 +140,7 @@ impl Machine {
                 }
             }
 
-            ip = ip + 1;
+            ip += 1;
         }
     }
 }
