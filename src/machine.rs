@@ -29,7 +29,7 @@ impl Machine {
             }
 
             let current_inst = &frame.code[ip];
-            println!("{:?}", current_inst);
+            // println!("{:?}", current_inst);
 
             match &current_inst.opcode {
                 Opcode::Push(v) => {
