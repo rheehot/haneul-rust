@@ -1,4 +1,5 @@
 mod constant;
+mod error;
 mod funcobject;
 mod instruction;
 mod machine;
@@ -21,8 +22,11 @@ fn main() {
             slot_start: 0,
         };
 
-        machine.run(&frame)
+        match machine.run(&frame) {
+            Ok(_) => println!("Terminated successfully"),
+            Err(_) => println!("Error occurred"),
+        }
     } else {
-        println!("failed parsing");
+        println!("Failed parsing");
     }
 }

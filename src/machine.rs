@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::constant::Constant;
+use crate::error::HaneulError;
 use crate::funcobject::FuncObject;
 use crate::instruction::Instruction;
 use crate::opcode::{BinaryOp, Opcode, UnaryOp};
@@ -18,7 +19,7 @@ pub struct Machine {
 }
 
 impl Machine {
-    pub fn run(&mut self, frame: &StackFrame) {
+    pub fn run(&mut self, frame: &StackFrame) -> Result<(), HaneulError> {
         let mut ip = 0;
         let code_length = frame.code.len();
 
@@ -41,7 +42,9 @@ impl Machine {
                     if let Some(value) = self.global_vars.get(v) {
                         self.operand_stack.push(value.clone());
                     } else {
-                        panic!(format!("변수 {}을(를) 찾을 수 없습니다.", v))
+                        return Err(HaneulError::UnboundVariable {
+                            var_name: v.clone(),
+                        });
                     }
                 }
                 Opcode::StoreGlobal(v) => {
@@ -55,10 +58,10 @@ impl Machine {
                     } = self.operand_stack.pop().unwrap()
                     {
                         if *given_arity as u8 != actual_arity {
-                            panic!(format!(
-                                "이 함수는 {}개의 인수를 받지만 {}개가 주어졌습니다.",
-                                actual_arity, given_arity
-                            ))
+                            return Err(HaneulError::TooManyArgs {
+                                actual_arity,
+                                given_arity: *given_arity as u8,
+                            });
                         }
 
                         match func_object {
@@ -69,7 +72,7 @@ impl Machine {
                                     slot_start: self.operand_stack.len() - *given_arity as usize,
                                 };
 
-                                self.run(&func_frame);
+                                self.run(&func_frame)?;
                                 let result = self.operand_stack.pop().unwrap();
 
                                 for _ in 0..*given_arity {
@@ -142,5 +145,7 @@ impl Machine {
 
             ip += 1;
         }
+
+        Ok(())
     }
 }
