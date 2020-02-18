@@ -21,6 +21,19 @@ fn normalize_constants(i1: &Constant, i2: &Constant) -> (Constant, Constant) {
     }
 }
 
+impl Constant {
+    pub fn type_name(&self) -> &str {
+        match self {
+            Constant::None => "(없음)",
+            Constant::Integer(_) => "정수",
+            Constant::Real(_) => "실수",
+            Constant::Char(_) => "문자",
+            Constant::Boolean(_) => "부울",
+            Constant::Function { .. } => "함수",
+        }
+    }
+}
+
 impl Add for &Constant {
     type Output = Option<Constant>;
 

@@ -19,12 +19,17 @@ pub struct Machine {
 }
 
 impl Machine {
-    pub fn run(&mut self, frame: &StackFrame) -> Result<(), HaneulError> {
+    pub fn run(&mut self, frame: &StackFrame) -> Result<(), (u32, HaneulError)> {
         let mut ip = 0;
         let code_length = frame.code.len();
 
-        while ip < code_length {
+        let result = loop {
+            if ip >= code_length {
+                break Ok(());
+            }
+
             let current_inst = &frame.code[ip];
+            println!("{:?}", current_inst);
 
             match &current_inst.opcode {
                 Opcode::Push(v) => {
@@ -42,7 +47,7 @@ impl Machine {
                     if let Some(value) = self.global_vars.get(v) {
                         self.operand_stack.push(value.clone());
                     } else {
-                        return Err(HaneulError::UnboundVariable {
+                        break Err(HaneulError::UnboundVariable {
                             var_name: v.clone(),
                         });
                     }
@@ -52,13 +57,15 @@ impl Machine {
                         .insert(v.clone(), self.operand_stack.pop().unwrap());
                 }
                 Opcode::Call(given_arity) => {
+                    let value = self.operand_stack.pop().unwrap();
+
                     if let Constant::Function {
                         arity: actual_arity,
                         func_object,
-                    } = self.operand_stack.pop().unwrap()
+                    } = value
                     {
                         if *given_arity as u8 != actual_arity {
-                            return Err(HaneulError::TooManyArgs {
+                            break Err(HaneulError::TooManyArgs {
                                 actual_arity,
                                 given_arity: *given_arity as u8,
                             });
@@ -92,7 +99,7 @@ impl Machine {
                             }
                         }
                     } else {
-                        panic!("이 타입은 호출 가능한 타입이 아닙니다.")
+                        break Err(HaneulError::NotCallable { value });
                     }
                 }
                 Opcode::Jmp(v) => {
@@ -100,14 +107,15 @@ impl Machine {
                     continue;
                 }
                 Opcode::PopJmpIfFalse(v) => {
-                    match self.operand_stack.pop().unwrap() {
+                    let top = self.operand_stack.pop().unwrap();
+                    match top {
                         Constant::Boolean(value) => {
                             if !value {
                                 ip = *v as usize;
                                 continue;
                             }
                         }
-                        _ => panic!("여기에는 참 또는 거짓 타입을 필요로 합니다."),
+                        _ => break Err(HaneulError::ExpectedBoolean { value: top }),
                     };
                 }
                 Opcode::UnaryOp(op) => {
@@ -118,7 +126,12 @@ impl Machine {
 
                     match result {
                         Some(result_value) => self.operand_stack.push(result_value),
-                        None => panic!("이 타입에는 연산을 적용할 수 없습니다."),
+                        None => {
+                            break Err(HaneulError::InvalidUnaryOp {
+                                value,
+                                op: op.clone(),
+                            })
+                        }
                     }
                 }
                 Opcode::BinaryOp(op) => {
@@ -131,21 +144,34 @@ impl Machine {
                         BinaryOp::Multiply => lhs * rhs,
                         BinaryOp::Divide => lhs / rhs,
                         BinaryOp::Mod => lhs % rhs,
-                        BinaryOp::Cmp(ord) => Some(Constant::Boolean(
-                            PartialOrd::partial_cmp(&lhs, &rhs) == Some(*ord),
-                        )),
+                        BinaryOp::Cmp(ord) => {
+                            let result = PartialOrd::partial_cmp(&lhs, &rhs);
+                            match result {
+                                None => None,
+                                Some(value) => Some(Constant::Boolean(&value == ord)),
+                            }
+                        }
                     };
 
                     match result {
                         Some(result_value) => self.operand_stack.push(result_value),
-                        None => panic!("이 타입에는 연산을 적용할 수 없습니다."),
+                        None => {
+                            break Err(HaneulError::InvalidBinaryOp {
+                                lhs: lhs.clone(),
+                                rhs: rhs.clone(),
+                                op: op.clone(),
+                            })
+                        }
                     }
                 }
             }
 
             ip += 1;
-        }
+        };
 
-        Ok(())
+        match result {
+            Ok(_) => Ok(()),
+            Err(err) => Err((frame.code[ip].line_number, err)),
+        }
     }
 }
