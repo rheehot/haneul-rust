@@ -154,7 +154,7 @@ impl Machine {
                         BinaryOp::Divide => &lhs / &rhs,
                         BinaryOp::Mod => &lhs % &rhs,
                         BinaryOp::Cmp(ord) => PartialOrd::partial_cmp(&lhs, &rhs)
-                            .and_then(|v| Some(Constant::Boolean(v == *ord))),
+                            .map(|v| Constant::Boolean(v == *ord)),
                     };
 
                     match result {
