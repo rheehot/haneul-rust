@@ -82,6 +82,8 @@ impl Machine {
                                 self.run(&func_frame)?;
                                 let result = self.operand_stack.pop().unwrap();
 
+                                // self.operand_stack
+                                //     .resize(func_frame.slot_start, Constant::None);
                                 for _ in 0..*given_arity {
                                     self.operand_stack.pop();
                                 }
@@ -135,30 +137,25 @@ impl Machine {
                     }
                 }
                 Opcode::BinaryOp(op) => {
-                    let rhs = &self.operand_stack.pop().unwrap();
-                    let lhs = &self.operand_stack.pop().unwrap();
+                    let rhs = self.operand_stack.pop().unwrap();
+                    let lhs = self.operand_stack.pop().unwrap();
 
                     let result = match op {
-                        BinaryOp::Add => lhs + rhs,
-                        BinaryOp::Subtract => lhs - rhs,
-                        BinaryOp::Multiply => lhs * rhs,
-                        BinaryOp::Divide => lhs / rhs,
-                        BinaryOp::Mod => lhs % rhs,
-                        BinaryOp::Cmp(ord) => {
-                            let result = PartialOrd::partial_cmp(&lhs, &rhs);
-                            match result {
-                                None => None,
-                                Some(value) => Some(Constant::Boolean(&value == ord)),
-                            }
-                        }
+                        BinaryOp::Add => &lhs + &rhs,
+                        BinaryOp::Subtract => &lhs - &rhs,
+                        BinaryOp::Multiply => &lhs * &rhs,
+                        BinaryOp::Divide => &lhs / &rhs,
+                        BinaryOp::Mod => &lhs % &rhs,
+                        BinaryOp::Cmp(ord) => PartialOrd::partial_cmp(&lhs, &rhs)
+                            .and_then(|v| Some(Constant::Boolean(v == *ord))),
                     };
 
                     match result {
                         Some(result_value) => self.operand_stack.push(result_value),
                         None => {
                             break Err(HaneulError::InvalidBinaryOp {
-                                lhs: lhs.clone(),
-                                rhs: rhs.clone(),
+                                lhs,
+                                rhs,
                                 op: op.clone(),
                             })
                         }
