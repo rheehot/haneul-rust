@@ -19,6 +19,13 @@ pub struct Machine {
 }
 
 impl Machine {
+    pub fn new(global_vars: HashMap<String, Constant>) -> Machine {
+        Machine {
+            operand_stack: Vec::new(),
+            global_vars,
+        }
+    }
+
     pub fn run(&mut self, frame: &StackFrame) -> Result<(), (u32, HaneulError)> {
         let mut ip = 0;
         let code_length = frame.code.len();

@@ -1,3 +1,4 @@
+mod builtin;
 mod constant;
 mod error;
 mod funcobject;
@@ -10,6 +11,7 @@ mod program;
 use std::env;
 use std::fs;
 
+use builtin::get_builtin;
 use machine::{Machine, StackFrame};
 use parser::program;
 use program::Program;
@@ -27,7 +29,7 @@ fn main() {
 
         match result {
             Ok((_, Program { const_table, code })) => {
-                let mut machine: Machine = Default::default();
+                let mut machine = Machine::new(get_builtin());
                 let frame = StackFrame {
                     code,
                     const_table,

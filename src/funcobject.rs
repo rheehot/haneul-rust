@@ -10,7 +10,7 @@ pub enum FuncObject {
         const_table: Vec<Constant>,
     },
     NativeFunc {
-        function: Box<fn(Vec<Constant>) -> Constant>,
+        function: fn(Vec<Constant>) -> Constant,
     },
 }
 
