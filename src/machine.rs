@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::constant::Constant;
 use crate::error::HaneulError;
 use crate::funcobject::FuncObject;
@@ -15,15 +13,18 @@ pub struct StackFrame {
 #[derive(Default)]
 pub struct Machine {
   operand_stack: Vec<Constant>,
-  global_vars: HashMap<u32, Constant>,
+  global_vars: Vec<Option<Constant>>,
   global_var_names: Vec<String>,
 }
 
 impl Machine {
-  pub fn new(global_vars: HashMap<u32, Constant>, global_var_names: Vec<String>) -> Machine {
+  pub fn new(global_vars: Vec<Option<Constant>>, global_var_names: Vec<String>) -> Machine {
+    let mut vars = global_vars;
+    vars.resize(global_var_names.len(), None);
+
     Machine {
       operand_stack: Vec::new(),
-      global_vars,
+      global_vars: vars,
       global_var_names,
     }
   }
@@ -55,7 +56,7 @@ impl Machine {
             .push(self.operand_stack[frame.slot_start + *v as usize].clone());
         }
         Opcode::LoadGlobal(v) => {
-          if let Some(value) = self.global_vars.get(v) {
+          if let Some(value) = &self.global_vars[*v as usize] {
             self.operand_stack.push(value.clone());
           } else {
             break Err(HaneulError::UnboundVariable {
@@ -64,9 +65,7 @@ impl Machine {
           }
         }
         Opcode::StoreGlobal(v) => {
-          self
-            .global_vars
-            .insert(v.clone(), self.operand_stack.pop().unwrap());
+          self.global_vars[*v as usize] = Some(self.operand_stack.pop().unwrap());
         }
         Opcode::Call(given_arity) => {
           let value = self.operand_stack.pop().unwrap();

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::constant::Constant;
 use crate::funcobject::FuncObject;
 
@@ -8,20 +6,15 @@ fn print_func(args: Vec<Constant>) -> Constant {
   Constant::None
 }
 
-pub fn get_builtin() -> HashMap<u32, Constant> {
-  let mut env = HashMap::new();
-
+pub fn get_builtin() -> Vec<Option<Constant>> {
   let print_object = FuncObject::NativeFunc {
     function: print_func,
   };
 
-  env.insert(
-    0,
-    Constant::Function {
-      arity: 1,
-      func_object: print_object,
-    },
-  );
+  let env = vec![Some(Constant::Function {
+    arity: 1,
+    func_object: print_object,
+  })];
 
   env
 }
