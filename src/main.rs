@@ -28,8 +28,15 @@ fn main() {
     let result = program(&data[..]);
 
     match result {
-      Ok((_, Program { const_table, code })) => {
-        let mut machine = Machine::new(get_builtin());
+      Ok((
+        _,
+        Program {
+          global_var_names,
+          const_table,
+          code,
+        },
+      )) => {
+        let mut machine = Machine::new(get_builtin(), global_var_names);
         let frame = StackFrame {
           code,
           const_table,

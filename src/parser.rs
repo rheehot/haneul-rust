@@ -67,8 +67,8 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
     0 => apply(be_u32(input)?, Opcode::Push),
     1 => (input, Opcode::Pop),
     2 => apply(be_u32(input)?, Opcode::Load),
-    3 => apply(string(input)?, Opcode::StoreGlobal),
-    4 => apply(string(input)?, Opcode::LoadGlobal),
+    3 => apply(be_u32(input)?, Opcode::StoreGlobal),
+    4 => apply(be_u32(input)?, Opcode::LoadGlobal),
     5 => apply(be_u8(input)?, Opcode::Call),
     6 => apply(be_u32(input)?, Opcode::Jmp),
     7 => apply(be_u32(input)?, Opcode::PopJmpIfFalse),
@@ -137,10 +137,18 @@ fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
 }
 
 pub fn program(input: &[u8]) -> IResult<&[u8], Program> {
+  let (input, global_var_names) = list(input, string)?;
   let (input, const_table) = list(input, constant)?;
   let (input, code) = list(input, instruction)?;
 
-  Ok((input, Program { const_table, code }))
+  Ok((
+    input,
+    Program {
+      global_var_names,
+      const_table,
+      code,
+    },
+  ))
 }
 
 #[cfg(test)]
@@ -224,16 +232,6 @@ mod tests {
         Instruction {
           line_number: 10,
           opcode: Opcode::Pop
-        }
-      ))
-    );
-    assert_eq!(
-      instruction(b"\x00\x00\x01\xa7\x04\x00\x00\x00\x00\x00\x00\x00\x02\xec\x82\xac\xea\xb3\xbc"),
-      Ok((
-        &b""[..],
-        Instruction {
-          line_number: 423,
-          opcode: Opcode::LoadGlobal(String::from("사과"))
         }
       ))
     );

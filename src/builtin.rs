@@ -8,7 +8,7 @@ fn print_func(args: Vec<Constant>) -> Constant {
   Constant::None
 }
 
-pub fn get_builtin() -> HashMap<String, Constant> {
+pub fn get_builtin() -> HashMap<u32, Constant> {
   let mut env = HashMap::new();
 
   let print_object = FuncObject::NativeFunc {
@@ -16,7 +16,7 @@ pub fn get_builtin() -> HashMap<String, Constant> {
   };
 
   env.insert(
-    String::from("보여주다"),
+    0,
     Constant::Function {
       arity: 1,
       func_object: print_object,

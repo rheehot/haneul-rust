@@ -15,14 +15,16 @@ pub struct StackFrame {
 #[derive(Default)]
 pub struct Machine {
   operand_stack: Vec<Constant>,
-  global_vars: HashMap<String, Constant>,
+  global_vars: HashMap<u32, Constant>,
+  global_var_names: Vec<String>,
 }
 
 impl Machine {
-  pub fn new(global_vars: HashMap<String, Constant>) -> Machine {
+  pub fn new(global_vars: HashMap<u32, Constant>, global_var_names: Vec<String>) -> Machine {
     Machine {
       operand_stack: Vec::new(),
       global_vars,
+      global_var_names,
     }
   }
 
@@ -57,7 +59,7 @@ impl Machine {
             self.operand_stack.push(value.clone());
           } else {
             break Err(HaneulError::UnboundVariable {
-              var_name: v.clone(),
+              var_name: self.global_var_names[*v as usize].clone(),
             });
           }
         }
