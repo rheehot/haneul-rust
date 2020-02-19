@@ -43,7 +43,7 @@ pub enum Opcode {
   Load(u32),
   StoreGlobal(String),
   LoadGlobal(String),
-  Call(u32),
+  Call(u8),
   Jmp(u32),
   PopJmpIfFalse(u32),
   BinaryOp(BinaryOp),

@@ -69,7 +69,7 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
     2 => apply(be_u32(input)?, Opcode::Load),
     3 => apply(string(input)?, Opcode::StoreGlobal),
     4 => apply(string(input)?, Opcode::LoadGlobal),
-    5 => apply(be_u32(input)?, Opcode::Call),
+    5 => apply(be_u8(input)?, Opcode::Call),
     6 => apply(be_u32(input)?, Opcode::Jmp),
     7 => apply(be_u32(input)?, Opcode::PopJmpIfFalse),
     8 => (input, Opcode::BinaryOp(BinaryOp::Add)),

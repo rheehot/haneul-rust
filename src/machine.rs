@@ -74,10 +74,10 @@ impl Machine {
             func_object,
           } = value
           {
-            if *given_arity as u8 != actual_arity {
+            if *given_arity != actual_arity {
               break Err(HaneulError::TooManyArgs {
                 actual_arity,
-                given_arity: *given_arity as u8,
+                given_arity: *given_arity,
               });
             }
 
