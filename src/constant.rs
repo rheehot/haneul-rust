@@ -13,11 +13,44 @@ pub enum Constant {
   Function { arity: u8, func_object: FuncObject },
 }
 
-fn normalize_constants(i1: &Constant, i2: &Constant) -> (Constant, Constant) {
-  match (i1, i2) {
-    (Constant::Integer(v1), v2 @ Constant::Real(_)) => (Constant::Real(*v1 as f64), v2.clone()),
-    (v1 @ Constant::Real(_), Constant::Integer(v2)) => (v1.clone(), Constant::Real(*v2 as f64)),
-    (v1, v2) => (v1.clone(), v2.clone()),
+macro_rules! binary_op {
+  ($trait_name: ident, $fn_name: ident, $(($l:ident($l_name:ident), $r:ident($r_name:ident) => $result_type:ident($result:expr))),*) => {
+    impl $trait_name for &Constant {
+      type Output = Option<Constant>;
+
+      fn $fn_name(self, other: &Constant) -> Option<Constant> {
+        match (self, other) {
+          $((Constant::$l($l_name), Constant::$r($r_name)) => Some(Constant::$result_type($result))),*,
+          _ => None
+        }
+      }
+    }
+  };
+}
+
+macro_rules! binary_op_arith {
+  ($trait_name: ident, $fn_name: ident, $op: tt) => {
+    binary_op!($trait_name, $fn_name,
+      (Integer(lhs), Integer(rhs) => Integer(lhs $op rhs)),
+      (Real(lhs), Real(rhs) => Real(lhs $op rhs)),
+      (Integer(lhs), Real(rhs) => Real(*lhs as f64 $op rhs)),
+      (Real(lhs), Integer(rhs) => Real(lhs $op *rhs as f64))
+    );
+  }
+}
+
+macro_rules! unary_op {
+  ($trait_name: ident, $fn_name: ident, $(($v_type:ident($v:ident) => $result_type:ident($result:expr))),*) => {
+    impl $trait_name for &Constant {
+      type Output = Option<Constant>;
+
+      fn $fn_name(self) -> Option<Constant> {
+        match self {
+          $(Constant::$v_type($v) => Some(Constant::$result_type($result))),*,
+          _ => None
+        }
+      }
+    }
   }
 }
 
@@ -34,80 +67,23 @@ impl Constant {
   }
 }
 
-impl Add for &Constant {
-  type Output = Option<Constant>;
+binary_op_arith!(Add, add, +);
+binary_op_arith!(Sub, sub, -);
+binary_op_arith!(Mul, mul, *);
+binary_op_arith!(Div, div, /);
 
-  fn add(self, other: &Constant) -> Option<Constant> {
-    match normalize_constants(self, other) {
-      (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 + v2)),
-      (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 + v2)),
-      _ => None,
-    }
-  }
-}
+binary_op!(Rem, rem,
+  (Integer(lhs), Integer(rhs) => Integer(lhs % rhs))
+);
 
-impl Sub for &Constant {
-  type Output = Option<Constant>;
-
-  fn sub(self, other: &Constant) -> Option<Constant> {
-    match normalize_constants(self, other) {
-      (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 - v2)),
-      (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 - v2)),
-      _ => None,
-    }
-  }
-}
-
-impl Mul for &Constant {
-  type Output = Option<Constant>;
-
-  fn mul(self, other: &Constant) -> Option<Constant> {
-    match normalize_constants(self, other) {
-      (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 * v2)),
-      (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 * v2)),
-      _ => None,
-    }
-  }
-}
-
-impl Div for &Constant {
-  type Output = Option<Constant>;
-
-  fn div(self, other: &Constant) -> Option<Constant> {
-    match normalize_constants(self, other) {
-      (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 / v2)),
-      (Constant::Real(v1), Constant::Real(v2)) => Some(Constant::Real(v1 / v2)),
-      _ => None,
-    }
-  }
-}
-
-impl Rem for &Constant {
-  type Output = Option<Constant>;
-
-  fn rem(self, other: &Constant) -> Option<Constant> {
-    match normalize_constants(self, other) {
-      (Constant::Integer(v1), Constant::Integer(v2)) => Some(Constant::Integer(v1 % v2)),
-      _ => None,
-    }
-  }
-}
-
-impl Neg for &Constant {
-  type Output = Option<Constant>;
-
-  fn neg(self) -> Option<Constant> {
-    match self {
-      Constant::Integer(v) => Some(Constant::Integer(-v)),
-      Constant::Real(v) => Some(Constant::Real(-v)),
-      _ => None,
-    }
-  }
-}
+unary_op!(Neg, neg, 
+  (Integer(v) => Integer(-v)),
+  (Real(v) => Real(-v))
+);
 
 impl PartialOrd for Constant {
   fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
-    match normalize_constants(self, other) {
+    match (self, other) {
       (Constant::Integer(v1), Constant::Integer(v2)) => PartialOrd::partial_cmp(&v1, &v2),
       (Constant::Real(v1), Constant::Real(v2)) => PartialOrd::partial_cmp(&v1, &v2),
       (Constant::Char(v1), Constant::Char(v2)) => PartialOrd::partial_cmp(&v1, &v2),
