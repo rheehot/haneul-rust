@@ -7,12 +7,14 @@ use crate::opcode::{BinaryOp, Opcode, UnaryOp};
 pub struct StackFrame {
   pub code: Vec<Instruction>,
   pub const_table: Vec<Constant>,
+  pub free_vars: Vec<Constant>,
   pub slot_start: usize,
 }
 
 #[derive(Default)]
 pub struct Machine {
   operand_stack: Vec<Constant>,
+  slot_stack: Vec<usize>,
   global_vars: Vec<Option<Constant>>,
   global_var_names: Vec<String>,
 }
@@ -24,6 +26,7 @@ impl Machine {
 
     Machine {
       operand_stack: Vec::new(),
+      slot_stack: Vec::new(),
       global_vars: vars,
       global_var_names,
     }
@@ -40,6 +43,8 @@ impl Machine {
 
       let current_inst = &frame.code[ip];
       // println!("{:?}", current_inst);
+      // println!("{:?}", self.operand_stack);
+      // println!("-----------------");
 
       match &current_inst.opcode {
         Opcode::Push(v) => {
@@ -54,6 +59,11 @@ impl Machine {
           self
             .operand_stack
             .push(self.operand_stack[frame.slot_start + *v as usize].clone());
+        }
+        Opcode::LoadDeref(v) => {
+          self
+            .operand_stack
+            .push(frame.free_vars[*v as usize].clone());
         }
         Opcode::LoadGlobal(v) => {
           if let Some(value) = &self.global_vars[*v as usize] {
@@ -83,18 +93,24 @@ impl Machine {
             }
 
             match func_object {
-              FuncObject::CodeObject { code, const_table } => {
+              FuncObject::CodeObject {
+                code,
+                const_table,
+                free_vars,
+              } => {
                 let func_frame = StackFrame {
                   code,
                   const_table,
+                  free_vars,
                   slot_start: self.operand_stack.len() - *given_arity as usize,
                 };
 
+                self.slot_stack.push(func_frame.slot_start);
                 self.run(&func_frame)?;
+                self.slot_stack.pop();
+
                 let result = self.operand_stack.pop().unwrap();
 
-                // self.operand_stack
-                //     .resize(func_frame.slot_start, Constant::None);
                 for _ in 0..*given_arity {
                   self.operand_stack.pop();
                 }
@@ -130,6 +146,20 @@ impl Machine {
             }
             _ => break Err(HaneulError::ExpectedBoolean { value: top }),
           };
+        }
+        Opcode::PushFreeVar(depth, index) => {
+          let top = &mut self.operand_stack.pop().unwrap();
+          if let Constant::Function {
+            func_object: FuncObject::CodeObject { free_vars, .. },
+            ..
+          } = top
+          {
+            let slot_start = self.slot_stack[self.slot_stack.len() - *depth as usize - 1];
+            free_vars.push(self.operand_stack[slot_start + *index as usize].clone());
+            self.operand_stack.push((*top).clone());
+          } else {
+            panic!("PushFreeVar은 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
+          }
         }
         Opcode::UnaryOp(op) => {
           let value = self.operand_stack.pop().unwrap();

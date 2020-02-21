@@ -67,20 +67,26 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
     0 => apply(be_u32(input)?, Opcode::Push),
     1 => (input, Opcode::Pop),
     2 => apply(be_u32(input)?, Opcode::Load),
-    3 => apply(be_u32(input)?, Opcode::StoreGlobal),
-    4 => apply(be_u32(input)?, Opcode::LoadGlobal),
-    5 => apply(be_u8(input)?, Opcode::Call),
-    6 => apply(be_u32(input)?, Opcode::Jmp),
-    7 => apply(be_u32(input)?, Opcode::PopJmpIfFalse),
-    8 => (input, Opcode::BinaryOp(BinaryOp::Add)),
-    9 => (input, Opcode::BinaryOp(BinaryOp::Subtract)),
-    10 => (input, Opcode::BinaryOp(BinaryOp::Multiply)),
-    11 => (input, Opcode::BinaryOp(BinaryOp::Divide)),
-    12 => (input, Opcode::BinaryOp(BinaryOp::Mod)),
-    13 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Equal))),
-    14 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Less))),
-    15 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Greater))),
-    16 => (input, Opcode::UnaryOp(UnaryOp::Negate)),
+    3 => apply(be_u32(input)?, Opcode::LoadDeref),
+    4 => apply(be_u32(input)?, Opcode::StoreGlobal),
+    5 => apply(be_u32(input)?, Opcode::LoadGlobal),
+    6 => apply(be_u8(input)?, Opcode::Call),
+    7 => apply(be_u32(input)?, Opcode::Jmp),
+    8 => apply(be_u32(input)?, Opcode::PopJmpIfFalse),
+    9 => {
+      let (input, depth) = be_u8(input)?;
+      let (input, index) = be_u8(input)?;
+      (input, Opcode::PushFreeVar(depth, index))
+    }
+    10 => (input, Opcode::BinaryOp(BinaryOp::Add)),
+    11 => (input, Opcode::BinaryOp(BinaryOp::Subtract)),
+    12 => (input, Opcode::BinaryOp(BinaryOp::Multiply)),
+    13 => (input, Opcode::BinaryOp(BinaryOp::Divide)),
+    14 => (input, Opcode::BinaryOp(BinaryOp::Mod)),
+    15 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Equal))),
+    16 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Less))),
+    17 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Greater))),
+    18 => (input, Opcode::UnaryOp(UnaryOp::Negate)),
     _ => panic!("invalid opcode type value"),
   };
 
@@ -97,7 +103,14 @@ fn code_object(input: &[u8]) -> IResult<&[u8], FuncObject> {
   let (input, const_table) = list(input, constant)?;
   let (input, code) = list(input, instruction)?;
 
-  Ok((input, FuncObject::CodeObject { const_table, code }))
+  Ok((
+    input,
+    FuncObject::CodeObject {
+      const_table,
+      code,
+      free_vars: Vec::new(),
+    },
+  ))
 }
 
 fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
@@ -273,6 +286,7 @@ mod tests {
         },
       ],
       const_table: vec![Constant::Integer(1)],
+      free_vars: Vec::new(),
     };
 
     assert_eq!(

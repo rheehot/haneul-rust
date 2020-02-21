@@ -41,11 +41,13 @@ pub enum Opcode {
   Push(u32),
   Pop,
   Load(u32),
+  LoadDeref(u32),
   StoreGlobal(u32),
   LoadGlobal(u32),
   Call(u8),
   Jmp(u32),
   PopJmpIfFalse(u32),
+  PushFreeVar(u8, u8),
   BinaryOp(BinaryOp),
   UnaryOp(UnaryOp),
 }

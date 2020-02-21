@@ -41,6 +41,7 @@ fn main() {
           code,
           const_table,
           slot_start: 0,
+          free_vars: Vec::new(),
         };
 
         match machine.run(&frame) {
