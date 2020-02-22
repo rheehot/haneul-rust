@@ -73,20 +73,17 @@ fn instruction(input: &[u8]) -> IResult<&[u8], Instruction> {
     6 => apply(be_u8(input)?, Opcode::Call),
     7 => apply(be_u32(input)?, Opcode::Jmp),
     8 => apply(be_u32(input)?, Opcode::PopJmpIfFalse),
-    9 => {
-      let (input, depth) = be_u8(input)?;
-      let (input, index) = be_u8(input)?;
-      (input, Opcode::PushFreeVar(depth, index))
-    }
-    10 => (input, Opcode::BinaryOp(BinaryOp::Add)),
-    11 => (input, Opcode::BinaryOp(BinaryOp::Subtract)),
-    12 => (input, Opcode::BinaryOp(BinaryOp::Multiply)),
-    13 => (input, Opcode::BinaryOp(BinaryOp::Divide)),
-    14 => (input, Opcode::BinaryOp(BinaryOp::Mod)),
-    15 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Equal))),
-    16 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Less))),
-    17 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Greater))),
-    18 => (input, Opcode::UnaryOp(UnaryOp::Negate)),
+    9 => apply(be_u8(input)?, Opcode::FreeVarLocal),
+    10 => apply(be_u8(input)?, Opcode::FreeVarFree),
+    11 => (input, Opcode::BinaryOp(BinaryOp::Add)),
+    12 => (input, Opcode::BinaryOp(BinaryOp::Subtract)),
+    13 => (input, Opcode::BinaryOp(BinaryOp::Multiply)),
+    14 => (input, Opcode::BinaryOp(BinaryOp::Divide)),
+    15 => (input, Opcode::BinaryOp(BinaryOp::Mod)),
+    16 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Equal))),
+    17 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Less))),
+    18 => (input, Opcode::BinaryOp(BinaryOp::Cmp(Ordering::Greater))),
+    19 => (input, Opcode::UnaryOp(UnaryOp::Negate)),
     _ => panic!("invalid opcode type value"),
   };
 

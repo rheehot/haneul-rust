@@ -14,7 +14,6 @@ pub struct StackFrame {
 #[derive(Default)]
 pub struct Machine {
   operand_stack: Vec<Constant>,
-  slot_stack: Vec<usize>,
   global_vars: Vec<Option<Constant>>,
   global_var_names: Vec<String>,
 }
@@ -26,7 +25,6 @@ impl Machine {
 
     Machine {
       operand_stack: Vec::new(),
-      slot_stack: Vec::new(),
       global_vars: vars,
       global_var_names,
     }
@@ -105,9 +103,8 @@ impl Machine {
                   slot_start: self.operand_stack.len() - *given_arity as usize,
                 };
 
-                self.slot_stack.push(func_frame.slot_start);
+                // println!("{:?}", self.slot_stack);
                 self.run(&func_frame)?;
-                self.slot_stack.pop();
 
                 let result = self.operand_stack.pop().unwrap();
 
@@ -147,9 +144,8 @@ impl Machine {
             _ => break Err(HaneulError::ExpectedBoolean { value: top }),
           };
         }
-        Opcode::PushFreeVar(depth, index) => {
-          let slot_start = self.slot_stack[self.slot_stack.len() - *depth as usize - 1];
-          let free_value = self.operand_stack[slot_start + *index as usize].clone();
+        Opcode::FreeVarLocal(index) => {
+          let value = self.operand_stack[frame.slot_start + *index as usize].clone();
 
           let top = self.operand_stack.last_mut().unwrap();
           if let Constant::Function {
@@ -157,11 +153,40 @@ impl Machine {
             ..
           } = top
           {
-            free_vars.push(free_value);
+            free_vars.push(value);
           } else {
-            panic!("PushFreeVar은 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
+            panic!("FreeVarLocal은 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
           }
         }
+        Opcode::FreeVarFree(index) => {
+          let value = frame.free_vars[*index as usize].clone();
+
+          let top = self.operand_stack.last_mut().unwrap();
+          if let Constant::Function {
+            func_object: FuncObject::CodeObject { free_vars, .. },
+            ..
+          } = top
+          {
+            free_vars.push(value);
+          } else {
+            panic!("FreeVarFree는 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
+          }
+        }
+        // Opcode::PushFreeVar(depth, index) => {
+        //   let slot_start = self.slot_stack[self.slot_stack.len() - *depth as usize - 1];
+        //   let free_value = self.operand_stack[slot_start + *index as usize].clone();
+
+        //   let top = self.operand_stack.last_mut().unwrap();
+        //   if let Constant::Function {
+        //     func_object: FuncObject::CodeObject { free_vars, .. },
+        //     ..
+        //   } = top
+        //   {
+        //     free_vars.push(free_value);
+        //   } else {
+        //     panic!("PushFreeVar은 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
+        //   }
+        // }
         Opcode::UnaryOp(op) => {
           let value = self.operand_stack.pop().unwrap();
           let result = match op {

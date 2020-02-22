@@ -47,7 +47,8 @@ pub enum Opcode {
   Call(u8),
   Jmp(u32),
   PopJmpIfFalse(u32),
-  PushFreeVar(u8, u8),
+  FreeVarLocal(u8),
+  FreeVarFree(u8),
   BinaryOp(BinaryOp),
   UnaryOp(UnaryOp),
 }
