@@ -36,7 +36,7 @@ impl Machine {
     let mut ip = 0;
     let code_length = frame.code.len();
 
-    let result = loop {
+    let result = 'outer: loop {
       if ip >= code_length {
         break Ok(());
       }
@@ -76,59 +76,79 @@ impl Machine {
         Opcode::StoreGlobal(v) => {
           self.global_vars[*v as usize] = Some(self.operand_stack.pop().unwrap());
         }
-        Opcode::Call(given_arity) => {
+        Opcode::Call(given_josa_list) => {
+          let given_arity = given_josa_list.len() as u8;
           let value = self.operand_stack.pop().unwrap();
 
           if let Constant::Function {
-            arity: full_arity,
+            josa_list,
             func_object,
             mut applied_args,
           } = value
           {
-            let actual_arity = full_arity - applied_args.len() as u8;
+            let full_arity = josa_list.len();
+            let actual_arity = applied_args.iter().filter(|&x| *x == None).count() as u8;
 
-            for _ in 0..*given_arity {
-              applied_args.push(self.operand_stack.pop().unwrap())
+            for josa in given_josa_list {
+              if josa == "_" {
+                let pos = applied_args.iter().position(|x| *x == None).unwrap();
+                applied_args[pos] = self.operand_stack.pop();
+                continue;
+              }
+
+              match josa_list.iter().position(|x| x == josa) {
+                Some(index) => {
+                  if applied_args[index] == None {
+                    applied_args[index] = self.operand_stack.pop()
+                  } else {
+                    break 'outer Err(HaneulError::AlreadyAppliedJosa { josa: josa.clone() });
+                  }
+                }
+                None => break 'outer Err(HaneulError::UnboundJosa { josa: josa.clone() }),
+              }
             }
 
             match given_arity.cmp(&actual_arity) {
               Ordering::Less => self.operand_stack.push(Constant::Function {
-                arity: actual_arity,
+                josa_list,
                 func_object,
                 applied_args,
               }),
-              Ordering::Equal => match func_object {
-                FuncObject::CodeObject {
-                  code,
-                  const_table,
-                  free_vars,
-                } => {
-                  let func_frame = StackFrame {
+              Ordering::Equal => {
+                let mut args: Vec<Constant> = applied_args.into_iter().flatten().collect();
+                match func_object {
+                  FuncObject::CodeObject {
                     code,
                     const_table,
                     free_vars,
-                    slot_start: self.operand_stack.len(),
-                  };
+                  } => {
+                    let func_frame = StackFrame {
+                      code,
+                      const_table,
+                      free_vars,
+                      slot_start: self.operand_stack.len(),
+                    };
 
-                  self.operand_stack.append(&mut applied_args);
-                  self.run(&func_frame)?;
+                    self.operand_stack.append(&mut args);
+                    self.run(&func_frame)?;
 
-                  let result = self.operand_stack.pop().unwrap();
+                    let result = self.operand_stack.pop().unwrap();
 
-                  for _ in 0..full_arity {
-                    self.operand_stack.pop();
+                    for _ in 0..full_arity {
+                      self.operand_stack.pop();
+                    }
+
+                    self.operand_stack.push(result)
                   }
-
-                  self.operand_stack.push(result)
+                  FuncObject::NativeFunc { function } => {
+                    self.operand_stack.push(function(args));
+                  }
                 }
-                FuncObject::NativeFunc { function } => {
-                  self.operand_stack.push(function(applied_args));
-                }
-              },
+              }
               Ordering::Greater => {
                 break Err(HaneulError::TooManyArgs {
                   actual_arity,
-                  given_arity: *given_arity,
+                  given_arity,
                 });
               }
             }

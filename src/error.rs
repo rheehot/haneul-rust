@@ -28,6 +28,12 @@ pub enum HaneulError {
     rhs: Constant,
     op: BinaryOp,
   },
+  AlreadyAppliedJosa {
+    josa: String,
+  },
+  UnboundJosa {
+    josa: String,
+  },
 }
 
 impl fmt::Display for HaneulError {
@@ -72,6 +78,12 @@ impl fmt::Display for HaneulError {
         rhs.type_name(),
         op.op_name()
       ),
+      HaneulError::AlreadyAppliedJosa { josa } => {
+        write!(f, "조사 '{}'는 이미 적용된 조사입니다.", josa)
+      }
+      HaneulError::UnboundJosa { josa } => {
+        write!(f, "이 함수에서 조사 '{}'를 찾을 수 없습니다.", josa)
+      }
     }
   }
 }

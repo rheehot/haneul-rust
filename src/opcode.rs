@@ -44,7 +44,7 @@ pub enum Opcode {
   LoadDeref(u32),
   StoreGlobal(u32),
   LoadGlobal(u32),
-  Call(u8),
+  Call(Vec<String>),
   Jmp(u32),
   PopJmpIfFalse(u32),
   FreeVarLocal(u8),

@@ -12,9 +12,9 @@ pub fn get_builtin() -> Vec<Option<Constant>> {
   };
 
   let env = vec![Some(Constant::Function {
-    arity: 1,
+    josa_list: vec![String::from("을")],
     func_object: print_object,
-    applied_args: Vec::new(),
+    applied_args: vec![None],
   })];
 
   env
