@@ -172,21 +172,6 @@ impl Machine {
             panic!("FreeVarFree는 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
           }
         }
-        // Opcode::PushFreeVar(depth, index) => {
-        //   let slot_start = self.slot_stack[self.slot_stack.len() - *depth as usize - 1];
-        //   let free_value = self.operand_stack[slot_start + *index as usize].clone();
-
-        //   let top = self.operand_stack.last_mut().unwrap();
-        //   if let Constant::Function {
-        //     func_object: FuncObject::CodeObject { free_vars, .. },
-        //     ..
-        //   } = top
-        //   {
-        //     free_vars.push(free_value);
-        //   } else {
-        //     panic!("PushFreeVar은 스택의 최상위가 코드 객체인 경우에만 사용 가능합니다.");
-        //   }
-        // }
         Opcode::UnaryOp(op) => {
           let value = self.operand_stack.pop().unwrap();
           let result = match op {
