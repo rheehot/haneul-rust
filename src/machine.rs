@@ -81,6 +81,7 @@ impl Machine {
           if let Constant::Function {
             arity: actual_arity,
             func_object,
+            applied_args,
           } = value
           {
             if *given_arity != actual_arity {

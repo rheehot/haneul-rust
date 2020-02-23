@@ -10,7 +10,7 @@ pub enum Constant {
   Real(f64),
   Char(char),
   Boolean(bool),
-  Function { arity: u8, func_object: FuncObject },
+  Function { arity: u8, func_object: FuncObject, applied_args: Vec<Constant> },
 }
 
 macro_rules! binary_op {

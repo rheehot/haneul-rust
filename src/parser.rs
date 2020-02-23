@@ -138,6 +138,7 @@ fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
         Constant::Function {
           arity,
           func_object: value,
+          applied_args: Vec::new(),
         },
       )
     }
@@ -290,7 +291,8 @@ mod tests {
             constant(b"\x05\x01\x00\x00\x00\x00\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x03\x00\x00\x00\x01\x02\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x08"),
             Ok((&b""[..], Constant::Function {
               arity: 1,
-              func_object: code_object
+              func_object: code_object,
+              applied_args: Vec::new()
             })
         ));
   }
