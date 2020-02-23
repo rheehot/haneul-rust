@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::constant::Constant;
 use crate::error::HaneulError;
 use crate::funcobject::FuncObject;
@@ -40,7 +42,6 @@ impl Machine {
       }
 
       let current_inst = &frame.code[ip];
-      // println!("{:?}", current_inst);
       // println!("{:?}", self.operand_stack);
       // println!("-----------------");
 
@@ -79,50 +80,56 @@ impl Machine {
           let value = self.operand_stack.pop().unwrap();
 
           if let Constant::Function {
-            arity: actual_arity,
+            arity: full_arity,
             func_object,
-            applied_args,
+            mut applied_args,
           } = value
           {
-            if *given_arity != actual_arity {
-              break Err(HaneulError::TooManyArgs {
-                actual_arity,
-                given_arity: *given_arity,
-              });
+            let actual_arity = full_arity - applied_args.len() as u8;
+
+            for _ in 0..*given_arity {
+              applied_args.push(self.operand_stack.pop().unwrap())
             }
 
-            match func_object {
-              FuncObject::CodeObject {
-                code,
-                const_table,
-                free_vars,
-              } => {
-                let func_frame = StackFrame {
+            match given_arity.cmp(&actual_arity) {
+              Ordering::Less => self.operand_stack.push(Constant::Function {
+                arity: actual_arity,
+                func_object,
+                applied_args,
+              }),
+              Ordering::Equal => match func_object {
+                FuncObject::CodeObject {
                   code,
                   const_table,
                   free_vars,
-                  slot_start: self.operand_stack.len() - *given_arity as usize,
-                };
+                } => {
+                  let func_frame = StackFrame {
+                    code,
+                    const_table,
+                    free_vars,
+                    slot_start: self.operand_stack.len(),
+                  };
 
-                // println!("{:?}", self.slot_stack);
-                self.run(&func_frame)?;
+                  self.operand_stack.append(&mut applied_args);
+                  self.run(&func_frame)?;
 
-                let result = self.operand_stack.pop().unwrap();
+                  let result = self.operand_stack.pop().unwrap();
 
-                for _ in 0..*given_arity {
-                  self.operand_stack.pop();
+                  for _ in 0..full_arity {
+                    self.operand_stack.pop();
+                  }
+
+                  self.operand_stack.push(result)
                 }
-
-                self.operand_stack.push(result)
-              }
-              FuncObject::NativeFunc { function } => {
-                let mut args = Vec::new();
-
-                for _ in 0..*given_arity {
-                  args.push(self.operand_stack.pop().unwrap())
+                FuncObject::NativeFunc { function } => {
+                  self.operand_stack.push(function(applied_args));
                 }
-
-                self.operand_stack.push(function(args));
+              },
+              Ordering::Greater => {
+                break Err(HaneulError::TooManyArgs {
+                  actual_arity,
+                  given_arity: *given_arity,
+                });
               }
             }
           } else {
