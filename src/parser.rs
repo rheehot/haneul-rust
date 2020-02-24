@@ -1,8 +1,10 @@
 extern crate nom;
 
-use nom::{combinator, multi, number::complete::*, IResult};
 use std::char;
 use std::cmp::Ordering;
+
+use indexmap::IndexMap;
+use nom::{combinator, multi, number::complete::*, IResult};
 
 use crate::constant::Constant;
 use crate::funcobject::FuncObject;
@@ -145,13 +147,17 @@ fn constant(input: &[u8]) -> IResult<&[u8], Constant> {
     5 => {
       let (input, josa_list) = list_u8(input, string_u8)?;
       let (input, value) = code_object(input)?;
-      let arity = josa_list.len();
+
+      let mut josa_map = IndexMap::new();
+      for josa in josa_list {
+        josa_map.insert(josa, None);
+      }
+
       (
         input,
         Constant::Function {
-          josa_list,
+          josa_map,
           func_object: value,
-          applied_args: vec![None; arity],
         },
       )
     }

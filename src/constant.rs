@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
+use indexmap::IndexMap;
+
 use crate::funcobject::FuncObject;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -10,7 +12,7 @@ pub enum Constant {
   Real(f64),
   Char(char),
   Boolean(bool),
-  Function { josa_list: Vec<String>, func_object: FuncObject, applied_args: Vec<Option<Constant>> },
+  Function { josa_map: IndexMap<String, Option<Constant>>, func_object: FuncObject },
 }
 
 macro_rules! binary_op {

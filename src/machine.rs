@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::constant::Constant;
 use crate::error::HaneulError;
 use crate::funcobject::FuncObject;
@@ -81,75 +79,81 @@ impl Machine {
           let value = self.operand_stack.pop().unwrap();
 
           if let Constant::Function {
-            josa_list,
+            mut josa_map,
             func_object,
-            mut applied_args,
           } = value
           {
-            let full_arity = josa_list.len();
-            let actual_arity = applied_args.iter().filter(|&x| *x == None).count() as u8;
+            let full_arity = josa_map.len();
+            let actual_arity = josa_map.values().filter(|x| **x == None).count() as u8;
+
+            if given_arity > actual_arity {
+              break Err(HaneulError::TooManyArgs {
+                actual_arity,
+                given_arity,
+              });
+            }
 
             for josa in given_josa_list {
               if josa == "_" {
-                let pos = applied_args.iter().position(|x| *x == None).unwrap();
-                applied_args[pos] = self.operand_stack.pop();
+                for value in josa_map.values_mut() {
+                  if *value == None {
+                    *value = self.operand_stack.pop();
+                    break;
+                  }
+                }
+
                 continue;
               }
 
-              match josa_list.iter().position(|x| x == josa) {
-                Some(index) => {
-                  if applied_args[index] == None {
-                    applied_args[index] = self.operand_stack.pop()
-                  } else {
-                    break 'outer Err(HaneulError::AlreadyAppliedJosa { josa: josa.clone() });
+              match josa_map.get_mut(josa) {
+                Some(value) => match value {
+                  Some(_) => {
+                    break 'outer Err(HaneulError::AlreadyAppliedJosa { josa: josa.clone() })
                   }
-                }
+                  None => {
+                    *value = self.operand_stack.pop();
+                  }
+                },
                 None => break 'outer Err(HaneulError::UnboundJosa { josa: josa.clone() }),
               }
             }
 
-            match given_arity.cmp(&actual_arity) {
-              Ordering::Less => self.operand_stack.push(Constant::Function {
-                josa_list,
+            if given_arity < actual_arity {
+              self.operand_stack.push(Constant::Function {
+                josa_map,
                 func_object,
-                applied_args,
-              }),
-              Ordering::Equal => {
-                let mut args: Vec<Constant> = applied_args.into_iter().flatten().collect();
-                match func_object {
-                  FuncObject::CodeObject {
-                    code,
-                    const_table,
-                    free_vars,
-                  } => {
-                    let func_frame = StackFrame {
-                      code,
-                      const_table,
-                      free_vars,
-                      slot_start: self.operand_stack.len(),
-                    };
+              });
+              continue;
+            }
 
-                    self.operand_stack.append(&mut args);
-                    self.run(&func_frame)?;
+            let mut args: Vec<Constant> = josa_map.into_iter().map(|(_, x)| x.unwrap()).collect();
 
-                    let result = self.operand_stack.pop().unwrap();
+            match func_object {
+              FuncObject::CodeObject {
+                code,
+                const_table,
+                free_vars,
+              } => {
+                let func_frame = StackFrame {
+                  code,
+                  const_table,
+                  free_vars,
+                  slot_start: self.operand_stack.len(),
+                };
 
-                    for _ in 0..full_arity {
-                      self.operand_stack.pop();
-                    }
+                self.operand_stack.append(&mut args);
+                self.run(&func_frame)?;
 
-                    self.operand_stack.push(result)
-                  }
-                  FuncObject::NativeFunc { function } => {
-                    self.operand_stack.push(function(args));
-                  }
+                let result = self.operand_stack.pop().unwrap();
+
+                for _ in 0..full_arity {
+                  self.operand_stack.pop();
                 }
+
+                self.operand_stack.push(result)
               }
-              Ordering::Greater => {
-                break Err(HaneulError::TooManyArgs {
-                  actual_arity,
-                  given_arity,
-                });
+              FuncObject::NativeFunc { function } => {
+                self.operand_stack.push(function(args));
               }
             }
           } else {

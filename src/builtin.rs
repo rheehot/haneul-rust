@@ -1,6 +1,16 @@
 use crate::constant::Constant;
 use crate::funcobject::FuncObject;
 
+use indexmap::IndexMap;
+
+fn make_josa_map(josa_list: Vec<&str>) -> IndexMap<String, Option<Constant>> {
+  let mut result = IndexMap::new();
+  for josa in josa_list {
+    result.insert(String::from(josa), None);
+  }
+  result
+}
+
 fn print_func(args: Vec<Constant>) -> Constant {
   println!("{:?}", args[0]);
   Constant::None
@@ -12,9 +22,8 @@ pub fn get_builtin() -> Vec<Option<Constant>> {
   };
 
   let env = vec![Some(Constant::Function {
-    josa_list: vec![String::from("을")],
+    josa_map: make_josa_map(vec!["을"]),
     func_object: print_object,
-    applied_args: vec![None],
   })];
 
   env
