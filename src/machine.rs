@@ -30,6 +30,10 @@ impl Machine {
     }
   }
 
+  fn pop(&mut self) -> Option<Constant> {
+    self.operand_stack.pop()
+  }
+
   pub fn run(&mut self, frame: &StackFrame) -> Result<(), (u32, HaneulError)> {
     let mut ip = 0;
     let code_length = frame.code.len();
@@ -50,7 +54,7 @@ impl Machine {
             .push(frame.const_table[*v as usize].clone());
         }
         Opcode::Pop => {
-          self.operand_stack.pop();
+          self.pop();
         }
         Opcode::Load(v) => {
           self
@@ -72,11 +76,11 @@ impl Machine {
           }
         }
         Opcode::StoreGlobal(v) => {
-          self.global_vars[*v as usize] = Some(self.operand_stack.pop().unwrap());
+          self.global_vars[*v as usize] = self.pop();
         }
         Opcode::Call(given_josa_list) => {
           let given_arity = given_josa_list.len() as u8;
-          let value = self.operand_stack.pop().unwrap();
+          let value = self.pop().unwrap();
 
           if let Constant::Function {
             mut josa_map,
@@ -97,7 +101,7 @@ impl Machine {
               if josa == "_" {
                 for value in josa_map.values_mut() {
                   if *value == None {
-                    *value = self.operand_stack.pop();
+                    *value = self.pop();
                     break;
                   }
                 }
@@ -111,7 +115,7 @@ impl Machine {
                     break 'outer Err(HaneulError::AlreadyAppliedJosa { josa: josa.clone() })
                   }
                   None => {
-                    *value = self.operand_stack.pop();
+                    *value = self.pop();
                   }
                 },
                 None => break 'outer Err(HaneulError::UnboundJosa { josa: josa.clone() }),
@@ -147,7 +151,7 @@ impl Machine {
                 let result = self.operand_stack.pop().unwrap();
 
                 for _ in 0..full_arity {
-                  self.operand_stack.pop();
+                  self.pop();
                 }
 
                 self.operand_stack.push(result)
@@ -165,7 +169,7 @@ impl Machine {
           continue;
         }
         Opcode::PopJmpIfFalse(v) => {
-          let top = self.operand_stack.pop().unwrap();
+          let top = self.pop().unwrap();
           match top {
             Constant::Boolean(value) => {
               if !value {
@@ -205,7 +209,7 @@ impl Machine {
           }
         }
         Opcode::UnaryOp(op) => {
-          let value = self.operand_stack.pop().unwrap();
+          let value = self.pop().unwrap();
           let result = match op {
             UnaryOp::Negate => -&value,
           };
@@ -221,8 +225,8 @@ impl Machine {
           }
         }
         Opcode::BinaryOp(op) => {
-          let rhs = self.operand_stack.pop().unwrap();
-          let lhs = self.operand_stack.pop().unwrap();
+          let rhs = self.pop().unwrap();
+          let lhs = self.pop().unwrap();
 
           let result = match op {
             BinaryOp::Add => &lhs + &rhs,
